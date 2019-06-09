@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd"
+	xmlns:context="http://www.springframework.org/schema/context">
+   
+   <bean id="p1" class="training.demo.model.Project">
+       <property name="pid" value="10"></property>
+       <property name="pname" value="Banking"></property>
+   </bean>
+   <bean id="addr1" class="training.demo.model.Address">
+       <property name="aid" value="100"></property>
+       <property name="street" value="Baner Rd"></property>
+       <property name="city" value="Pune"></property>
+   </bean>
+    <bean id="addr2" class="training.demo.model.Address">
+       <property name="aid" value="100"></property>
+       <property name="street" value="Baner Rd"></property>
+       <property name="city" value="Pune"></property>
+   </bean>
+   <bean id="emp1" class="training.demo.model.Employee" init-method="myinit" destroy-method="mydestroy" autowire="byName">
+       <property name="empid" value="1001"></property>
+       <property name="ename" value="Manjiri"></property>
+       <property name="sal" value="2222222"></property>
+        
+   </bean>
+   
+   
+   	
+</beans>
