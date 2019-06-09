@@ -1,0 +1,97 @@
+Transaction demarcation with JTA
+Hibernate works in any environment that uses JTA, in fact, we recommend to use JTA whenever possible as it is the standard Java transaction interface. You get JTA built-in with all J2EE/JEE application servers, and each Datasource you use in such a container is automatically handled by a JTA TransactionManager. But this is not the only way to get JTA, you can use a standalone implementation (e.g. JOTM) in any plain JSE environment. Another example is JBoss Seam, it comes bundled with a demo application that uses an embeddable version of the JBoss JCA/JTA/JNDI services, hence provides JTA in any deployment situation.
+ 
+Hibernate can automatically bind the "current" Session to the current JTA transaction. This enables an easy implementation of the  session-per-request strategy with the getCurrentSession() method on your SessionFactory:
+try {
+    UserTransaction tx = (UserTransaction)new InitialContext()
+                            .lookup("java:comp/UserTransaction");
+                            
+    tx.begin();
+ 
+    // Do some work
+    factory.getCurrentSession().load(...);
+    factory.getCurrentSession().persist(...);
+ 
+    tx.commit();
+}
+catch (RuntimeException e) {
+    tx.rollback();
+    throw e; // or display error message
+}
+ 
+The advantage of the built-in support should become clear as soon as you write non-trivial applications: you can separate the transaction demarcation code from your data access code. The "current session" refers to a Hibernate Session bound by Hibernate behind the scenes, to the transaction scope. A Session is opened when getCurrentSession() is called for the first time and closed when the transaction ends. It is also flushed automatically before the transaction commits. You can call getCurrentSession() as often and anywhere you want as long as the transaction runs. To enable this strategy in your Hibernate configuration:
+set hibernate.transaction.manager_lookup_class to a lookup strategy for your JEE container
+set hibernate.transaction.factory_class to org.hibernate.transaction.JTATransactionFactory
+ 
+See the Hibernate reference documentation for more configuration details.
+ 
+This does not mean that all Hibernate Sessions are closed when a transaction is committed! Only the Session that you obtained with sf.getCurrentSession() is flushed and closed automatically. If you decide to use sf.openSession() and manage the Session yourself, you have to flush() and close() it. So a less convenient alternative, without any "current" Session, is this:
+UserTransaction tx = (UserTransaction)new InitialContext()
+                            .lookup("java:comp/UserTransaction");
+ 
+Session session = factory.openSession();
+ 
+try {
+    tx.begin();
+ 
+    // Do some work
+    session.load(...);
+    session.persist(...);
+ 
+    session.flush();
+ 
+    tx.commit();
+}
+catch (RuntimeException e) {
+    tx.rollback();
+    throw e; // or display error message
+}
+finally {
+    session.close();
+}
+ 
+If you manage the Session yourself, code is more difficult to layer. You can't easily move data access operations into a different layer than transaction and Session demarcation.
+ 
+Transaction demarcation with plain JDBC
+If you don't have JTA and don't want to deploy it along with your application, you will usually have to fall back to JDBC transaction demarcation. Instead of calling the JDBC API you better use Hibernate's Transaction and the built-in session-per-request functionality:
+try {
+    factory.getCurrentSession().beginTransaction();
+ 
+    // Do some work
+    factory.getCurrentSession().load(...);
+    factory.getCurrentSession().persist(...);
+ 
+    factory.getCurrentSession().getTransaction().commit();
+}
+catch (RuntimeException e) {
+    factory.getCurrentSession().getTransaction().rollback();
+    throw e; // or display error message
+}
+ 
+Because Hibernate can't bind the "current session" to a transaction, as it does in a JTA environment, it binds it to the current Java thread. It is opened when getCurrentSession() is called for the first time, but in a "proxied" state that doesn't allow you to do anything except start a transaction. When the transaction ends, either through commit or roll back, the "current" Session is closed automatically. The next call to getCurrentSession() starts a new proxied Session, and so on. In other words, the session is bound to the thread behind the scenes, but scoped to a transaction, just like in a JTA environment. This thread-bound strategy works in every JSE application - note that you should use JTA and a transaction-bound strategy in a JEE environment (or install JTA with your JSE application, this is a modular service).
+ 
+To enable the thread-bound strategy in your Hibernate configuration:
+set hibernate.transaction.factory_class to org.hibernate.transaction.JDBCTransactionFactory
+set hibernate.current_session_context_class to thread
+ 
+This does not mean that all Hibernate Sessions are closed when a transaction is committed! Only the Session that you obtained with sf.getCurrentSession() is flushed and closed automatically. If you decide to use sf.openSession() and manage the Session yourself, you have to close() it. So a less convenient alternative, without any "current" Session, is this:
+Session session = factory.openSession();
+Transaction tx = null;
+try {
+    tx = session.beginTransaction();
+ 
+    // Do some work
+    session.load(...);
+    session.persist(...);
+ 
+    tx.commit(); // Flush happens automatically
+}
+catch (RuntimeException e) {
+    tx.rollback();
+    throw e; // or display error message
+}
+finally {
+    session.close();
+}
+ 
+If you manage the Session yourself, code is more difficult to layer. You can't easily move data access operations into a different layer than transaction and Session demarcation.

@@ -1,0 +1,36 @@
+<property name="transaction.factory_class">
+        org.hibernate.transaction.JTATransactionFactory
+</property>
+
+ <property name="jta.UserTransaction">
+        java:comp/UserTransaction
+    </property>
+
+    
+    What's the benefit of using JTA transactions? 
+    JTA transactions are useful if you have multiple 
+    transactional resources, such as a database and a 
+    message queue. JTA allows you to treat the disparate 
+    transactions as a single transaction. Combining multiple 
+    transactions also applies within Hibernate. If you attempt to
+     create multiple transactions from the same Session instance, 
+     all of the operations are batched into the first transaction.
+      Let's look at an example that includes two transactions:
+      
+   Transaction tx0 =session.beginTransaction();
+    Event event =new Event();
+    //...populate the event instance
+    session.saveOrUpdate(event);
+    Transaction tx1 =session.beginTransaction();
+    Location location =new Location();
+    //...populate the Location instance
+    session.saveOrUpdate(location);
+    tx0.commit();
+    tx1.commit();
+
+This example begins by creating a new transaction. 
+The second use of session.beginTransaction()just returns the 
+first transaction instance. session.saveOrUpdate(location)commits 
+the first transaction, and tx0.commit()recommits the first transaction.
+      
+      

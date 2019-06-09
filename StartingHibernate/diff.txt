@@ -1,0 +1,76 @@
+>>>>>>>>>>>>>>>>>>.all save methods
+session.save() : Save does an insert and will fail if the primary key is already persistent. 
+session.saveOrUpdate() : saveOrUpdate does a select first to determine if it needs to do an insert or an update. 
+Insert data if primary key not exist otherwise update data. 
+
+session.persist() : Does the same like session.save(). 
+But session.save() return Serializable object but session.persist() return void. 
+session.save() returns the generated identifier (Serializable object) and session.persist() doesn't. 
+For Example : 
+if you do :- 
+         System.out.println(session.save(question)); 
+         This will print the generated primary key. 
+if you do :- 
+         System.out.println(session.persist(question)); 
+         Compile time error because session.persist() return void.
+
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>..session mechanism
+
+getCurrentSession() : The "current session" refers to a Hibernate Session bound by 
+Hibernate behind the scenes, to the transaction scope. A Session is opened when
+ getCurrentSession() is called for the first time and closed when the transaction ends.
+  It is also flushed automatically before the transaction commits. You can call 
+  getCurrentSession() as often and anywhere you want as long as the transaction runs.
+   To enable this strategy in your Hibernate configuration: 
+
+set hibernate.transaction.manager_lookup_class to a lookup strategy for your JEE container 
+set hibernate.transaction.factory_class to org.hibernate.transaction.JTATransactionFactory 
+
+Only the Session that you obtained with sf.getCurrentSession() is flushed and closed automatically. 
+Example : 
+try { 
+UserTransaction tx = (UserTransaction)new InitialContext() 
+.lookup("java:comp/UserTransaction"); 
+
+tx.begin(); 
+
+// Do some work 
+sf.getCurrentSession().createQuery(...); 
+sf.getCurrentSession().persist(...); 
+
+tx.commit(); 
+} 
+catch (RuntimeException e) { 
+tx.rollback(); 
+throw e; 
+} 
+                        
+openSession() : 
+If you decide to use manage the Session yourself the go for sf.openSession() ,
+ you have to flush() and close() it. It does not flush and close() automatically.
+Example : 
+UserTransaction tx = (UserTransaction)new InitialContext() 
+.lookup("java:comp/UserTransaction"); 
+
+Session session = factory.openSession(); 
+
+try { 
+tx.begin(); 
+
+// Do some work 
+session.createQuery(...); 
+session.persist(...); 
+
+session.flush(); // Extra work you need to do 
+
+tx.commit(); 
+} 
+catch (RuntimeException e) { 
+tx.rollback(); 
+throw e; // or display error message 
+} 
+finally { 
+session.close(); // Extra work you need to do 
+}
+           
